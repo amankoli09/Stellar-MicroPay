@@ -18,7 +18,11 @@ import {
   fetchNetworkFeeStats,
   isValidStellarAddress,
   server,
+  STELLAR_BASE_FEE_XLM,
+  STELLAR_MEMO_TEXT_MAX_BYTES,
+  STELLAR_MINIMUM_ACCOUNT_BALANCE_XLM,
   submitTransaction,
+  truncateMemoText,
 } from "@/lib/stellar";
 import { signTransactionWithWallet } from "@/lib/wallet";
 import { formatXLM, shortenAddress } from "@/utils/format";
@@ -67,7 +71,7 @@ type FavouriteEntry = {
   address: string;
 };
 
-const ESTIMATED_NETWORK_FEE = "0.00001 XLM";
+const ESTIMATED_NETWORK_FEE = `${STELLAR_BASE_FEE_XLM} XLM`;
 const FAVOURITES_STORAGE_KEY = "stellar-micropay:favourites";
 
 interface BarcodeDetectorResult {
@@ -129,7 +133,7 @@ export default function SendPaymentForm({
   const [isScannerSupported, setIsScannerSupported] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [scannerError, setScannerError] = useState<string | null>(null);
-  const [networkFeeXlm, setNetworkFeeXlm] = useState(0.00001);
+  const [networkFeeXlm, setNetworkFeeXlm] = useState(STELLAR_BASE_FEE_XLM);
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -307,11 +311,11 @@ export default function SendPaymentForm({
       try {
         const feeStats = await fetchNetworkFeeStats();
         if (!cancelled) {
-          setNetworkFeeXlm(feeStats.baseFeeXlm || 0.00001);
+          setNetworkFeeXlm(feeStats.baseFeeXlm || STELLAR_BASE_FEE_XLM);
         }
       } catch {
         if (!cancelled) {
-          setNetworkFeeXlm(0.00001);
+          setNetworkFeeXlm(STELLAR_BASE_FEE_XLM);
         }
       }
     };
@@ -327,13 +331,16 @@ export default function SendPaymentForm({
     if (!prefill) return;
     if (prefill.destination) setDestination(prefill.destination);
     if (prefill.amount) setAmount(prefill.amount);
-    if (prefill.memo) setMemo(prefill.memo);
+    if (prefill.memo) setMemo(truncateMemoText(prefill.memo));
   }, [prefill]);
 
   const xlmBal = parseFloat(xlmBalance);
   const usdcBal = usdcBalance ? parseFloat(usdcBalance) : 0;
   const balance = selectedAsset === "XLM" ? xlmBal : usdcBal;
-  const maxSend = selectedAsset === "XLM" ? Math.max(0, xlmBal - 1) : usdcBal;
+  const maxSend =
+    selectedAsset === "XLM"
+      ? Math.max(0, xlmBal - STELLAR_MINIMUM_ACCOUNT_BALANCE_XLM)
+      : usdcBal;
 
   const amountNum = parseFloat(amount);
   const hasAmount = Number.isFinite(amountNum) && amountNum > 0;
@@ -662,10 +669,11 @@ export default function SendPaymentForm({
             <input
               type="text"
               value={memo}
-              onChange={(e) => handleMemoChange(e.target.value.slice(0, 28))}
+              onChange={(e) => handleMemoChange(truncateMemoText(e.target.value))}
               placeholder="Payment note..."
               className="input-field"
               disabled={status !== "idle"}
+              maxLength={STELLAR_MEMO_TEXT_MAX_BYTES}
             />
           </div>
         )}

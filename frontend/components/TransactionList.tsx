@@ -36,6 +36,60 @@ interface TransactionListProps {
   onSendAgain?: (to: string, amount: string) => void;
 }
 
+interface CachedPaymentHistory {
+  records: PaymentRecord[];
+  hasMore: boolean;
+  nextCursor?: string;
+  savedAt: number;
+}
+
+const PAYMENT_HISTORY_CACHE_PREFIX = "stellar-micropay:offline-payments:";
+
+function getPaymentHistoryCacheKey(publicKey: string, limit: number) {
+  return `${PAYMENT_HISTORY_CACHE_PREFIX}${publicKey}:${limit}`;
+}
+
+function loadCachedPaymentHistory(
+  publicKey: string,
+  limit: number
+): CachedPaymentHistory | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(getPaymentHistoryCacheKey(publicKey, limit));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedPaymentHistory;
+    if (!Array.isArray(parsed.records) || typeof parsed.savedAt !== "number") {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function savePaymentHistorySnapshot(
+  publicKey: string,
+  limit: number,
+  snapshot: Omit<CachedPaymentHistory, "savedAt">
+) {
+  if (typeof window === "undefined") return;
+
+  window.localStorage.setItem(
+    getPaymentHistoryCacheKey(publicKey, limit),
+    JSON.stringify({ ...snapshot, savedAt: Date.now() })
+  );
+}
+
+function formatSnapshotTime(savedAt: number) {
+  return new Date(savedAt).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function filterPayments(
   payments: PaymentRecord[],
   filters: TransactionFilters
@@ -72,6 +126,7 @@ export default function TransactionList({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [nextCursor, setNextCursor] = useState<string | undefined>();
   const [focusedIndex, setFocusedIndex] = useState(-1);
+  const [stalePaymentsAt, setStalePaymentsAt] = useState<number | null>(null);
   const router = useRouter();
 
   const updatePayments = useCallback(
@@ -104,15 +159,38 @@ export default function TransactionList({
           setPayments((prev) => {
             const merged = [...prev, ...data.records];
             onPaymentsChange?.(merged);
+            savePaymentHistorySnapshot(publicKey, limit, {
+              records: merged,
+              hasMore: data.hasMore,
+              nextCursor: data.nextCursor,
+            });
             return merged;
           });
         } else {
           updatePayments(data.records);
+          savePaymentHistorySnapshot(publicKey, limit, {
+            records: data.records,
+            hasMore: data.hasMore,
+            nextCursor: data.nextCursor,
+          });
         }
 
         setHasMore(data.hasMore);
         setNextCursor(data.nextCursor);
+        setStalePaymentsAt(null);
       } catch (err) {
+        const cached = !isLoadMore
+          ? loadCachedPaymentHistory(publicKey, limit)
+          : null;
+        if (cached) {
+          updatePayments(cached.records);
+          setHasMore(cached.hasMore);
+          setNextCursor(cached.nextCursor);
+          setStalePaymentsAt(cached.savedAt);
+          setError(null);
+          return;
+        }
+
         setError("Could not load transaction history.");
         console.error(err);
       } finally {
@@ -217,7 +295,7 @@ export default function TransactionList({
 
   return (
     <div className={compact ? "" : "card"}>
-{!compact && (
+          {!compact && (
             <div className="flex items-center justify-between mb-6">
               <h2 className="font-display text-lg font-semibold text-white flex items-center gap-2">
                 <HistoryIcon className="w-5 h-5 text-stellar-400" />
@@ -230,6 +308,12 @@ export default function TransactionList({
                 <RefreshIcon className="w-3.5 h-3.5" />
                 Refresh
               </button>
+            </div>
+          )}
+
+          {stalePaymentsAt && (
+            <div className="mb-4 inline-flex items-center rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-xs font-medium text-amber-200">
+              Offline history snapshot from {formatSnapshotTime(stalePaymentsAt)}
             </div>
           )}
           

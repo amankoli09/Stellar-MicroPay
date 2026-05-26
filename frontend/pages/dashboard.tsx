@@ -79,12 +79,61 @@ interface PaymentStats {
   totalTransactions: number;
 }
 
+interface CachedBalanceSnapshot {
+  xlmBalance: string;
+  usdcBalance: string | null;
+  reserveInfo: AccountReserveInfo | null;
+  savedAt: number;
+}
+
+const BALANCE_CACHE_KEY_PREFIX = "stellar-micropay:offline-balance:";
+
+function getBalanceCacheKey(publicKey: string) {
+  return `${BALANCE_CACHE_KEY_PREFIX}${publicKey}`;
+}
+
+function loadBalanceSnapshot(publicKey: string): CachedBalanceSnapshot | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(getBalanceCacheKey(publicKey));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedBalanceSnapshot;
+    if (!parsed?.xlmBalance || typeof parsed.savedAt !== "number") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function saveBalanceSnapshot(
+  publicKey: string,
+  snapshot: Omit<CachedBalanceSnapshot, "savedAt">
+) {
+  if (typeof window === "undefined") return;
+
+  window.localStorage.setItem(
+    getBalanceCacheKey(publicKey),
+    JSON.stringify({ ...snapshot, savedAt: Date.now() })
+  );
+}
+
+function formatSnapshotTime(savedAt: number) {
+  return new Date(savedAt).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default function Dashboard({ publicKey, onConnect, stellarURI }: DashboardProps) {
   const AUTO_REFRESH_SECONDS = 30;
   const [xlmBalance, setXlmBalance]   = useState<string | null>(null);
   const [reserveInfo, setReserveInfo] = useState<AccountReserveInfo | null>(null);
   const [usdcBalance, setUsdcBalance] = useState<string | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(false);
+  const [staleBalanceAt, setStaleBalanceAt] = useState<number | null>(null);
   const [xlmPrice, setXlmPrice] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -188,7 +237,23 @@ export default function Dashboard({ publicKey, onConnect, stellarURI }: Dashboar
       setXlmBalance(bal);
       setUsdcBalance(usdc);
       setReserveInfo(reserve);
+      setStaleBalanceAt(null);
+      saveBalanceSnapshot(publicKey, {
+        xlmBalance: bal,
+        usdcBalance: usdc,
+        reserveInfo: reserve,
+      });
     } catch (err: unknown) {
+      const cached = loadBalanceSnapshot(publicKey);
+      const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
+      if (cached && isOffline) {
+        setXlmBalance(cached.xlmBalance);
+        setUsdcBalance(cached.usdcBalance);
+        setReserveInfo(cached.reserveInfo);
+        setStaleBalanceAt(cached.savedAt);
+        return;
+      }
+
       const msg = err instanceof Error ? err.message : "";
       if (
         msg === ACCOUNT_NOT_FOUND_ERROR ||
@@ -198,7 +263,9 @@ export default function Dashboard({ publicKey, onConnect, stellarURI }: Dashboar
         setAccountNotFound(true);
       }
       setXlmBalance(null);
+      setUsdcBalance(null);
       setReserveInfo(null);
+      setStaleBalanceAt(null);
     } finally {
       setBalanceLoading(false);
     }
@@ -788,6 +855,11 @@ export default function Dashboard({ publicKey, onConnect, stellarURI }: Dashboar
                 {xlmPrice !== null && (
                   <p className="text-sm text-slate-400 mt-0.5">
                     {formatUSD(parseFloat(xlmBalance) * xlmPrice)}
+                  </p>
+                )}
+                {staleBalanceAt && (
+                  <p className="mt-1 inline-flex items-center rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[11px] font-medium text-amber-200">
+                    Offline snapshot from {formatSnapshotTime(staleBalanceAt)}
                   </p>
                 )}
                 {!sparklineLoading && sparklineData.length > 0 && (

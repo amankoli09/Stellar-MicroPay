@@ -102,6 +102,60 @@ export const server = new Proxy({} as Horizon.Server, {
   },
 });
 
+/** One XLM is divided into 10,000,000 stroops, Stellar's smallest unit. */
+export const STELLAR_STROOPS_PER_XLM = 10_000_000;
+
+/** Stellar's protocol minimum operation fee is 100 stroops. */
+export const STELLAR_BASE_FEE_STROOPS = 100;
+
+/** Default network fee in XLM, derived from the base fee in stroops. */
+export const STELLAR_BASE_FEE_XLM =
+  STELLAR_BASE_FEE_STROOPS / STELLAR_STROOPS_PER_XLM;
+
+/** Transactions built for wallet signing expire after 60 seconds. */
+export const STELLAR_TRANSACTION_TIMEOUT_SECONDS = 60;
+
+/** Stellar MEMO_TEXT values are capped at 28 UTF-8 bytes by the protocol. */
+export const STELLAR_MEMO_TEXT_MAX_BYTES = 28;
+
+/** A base Stellar account must keep two reserve units before subentries. */
+export const STELLAR_BASE_ACCOUNT_RESERVE_COUNT = 2;
+
+/**
+ * Stellar base reserve in XLM.
+ *
+ * Each account holds (2 + subentry_count) base reserves of 0.5 XLM. Trustlines,
+ * offers, signers, and data entries each count as one subentry.
+ *
+ * @see https://developers.stellar.org/docs/learn/fundamentals/stellar-data-structures/accounts#base-reserves
+ */
+export const STELLAR_BASE_RESERVE_XLM = 0.5;
+
+/** Minimum XLM balance for an account with no subentries. */
+export const STELLAR_MINIMUM_ACCOUNT_BALANCE_XLM =
+  STELLAR_BASE_ACCOUNT_RESERVE_COUNT * STELLAR_BASE_RESERVE_XLM;
+
+const STELLAR_BASE_FEE_STROOPS_STRING = String(STELLAR_BASE_FEE_STROOPS);
+const ELEVATED_FEE_MAX_STROOPS = STELLAR_BASE_FEE_STROOPS * 10;
+
+export function truncateMemoText(memo: string): string {
+  const encoder = new TextEncoder();
+  if (encoder.encode(memo).length <= STELLAR_MEMO_TEXT_MAX_BYTES) {
+    return memo;
+  }
+
+  let truncated = "";
+  for (const char of memo) {
+    const next = truncated + char;
+    if (encoder.encode(next).length > STELLAR_MEMO_TEXT_MAX_BYTES) {
+      break;
+    }
+    truncated = next;
+  }
+
+  return truncated;
+}
+
 /**
  * USDC issuer (Circle) for the active network.
  *
@@ -466,19 +520,6 @@ export async function getXLMBalance(publicKey: string): Promise<string> {
 }
 
 /**
- * Stellar base reserve in XLM (#164).
- *
- * Each account holds (2 + subentry_count) base reserves of 0.5 XLM. Trustlines,
- * offers, signers, and data entries each count as one subentry. Submitting a
- * transaction that would drop the balance below this minimum fails with
- * `tx_insufficient_balance`, so the dashboard warns the user before they get
- * there.
- *
- * @see https://developers.stellar.org/docs/learn/fundamentals/stellar-data-structures/accounts#base-reserves
- */
-export const STELLAR_BASE_RESERVE_XLM = 0.5;
-
-/**
  * Returns the minimum XLM balance required for an account with the given
  * subentry count.
  */
@@ -486,7 +527,9 @@ export function calculateMinimumBalance(subentryCount: number): number {
   const safeSubentryCount = Number.isFinite(subentryCount) && subentryCount >= 0
     ? subentryCount
     : 0;
-  return (2 + safeSubentryCount) * STELLAR_BASE_RESERVE_XLM;
+  return (
+    STELLAR_BASE_ACCOUNT_RESERVE_COUNT + safeSubentryCount
+  ) * STELLAR_BASE_RESERVE_XLM;
 }
 
 export interface AccountReserveInfo {
@@ -573,7 +616,7 @@ export async function buildChangeTrustTransaction({
   const asset = new Asset(assetCode, issuer);
 
   const builder = new TransactionBuilder(sourceAccount, {
-    fee: "100",
+    fee: STELLAR_BASE_FEE_STROOPS_STRING,
     networkPassphrase: NETWORK_PASSPHRASE,
   })
     .addOperation(
@@ -582,7 +625,7 @@ export async function buildChangeTrustTransaction({
         limit: limit,
       })
     )
-    .setTimeout(60);
+    .setTimeout(STELLAR_TRANSACTION_TIMEOUT_SECONDS);
 
   return builder.build();
 }
@@ -625,7 +668,7 @@ export async function buildPaymentTransaction({
   }
 
   const builder = new TransactionBuilder(sourceAccount, {
-    fee: "100", // 100 stroops = 0.00001 XLM
+    fee: STELLAR_BASE_FEE_STROOPS_STRING,
     networkPassphrase: NETWORK_PASSPHRASE,
   })
     .addOperation(
@@ -635,10 +678,10 @@ export async function buildPaymentTransaction({
         amount: amount,
       })
     )
-    .setTimeout(60); // 60 second validity window
+    .setTimeout(STELLAR_TRANSACTION_TIMEOUT_SECONDS);
 
   if (memo) {
-    builder.addMemo(Memo.text(memo.slice(0, 28))); // Stellar memo max 28 bytes
+    builder.addMemo(Memo.text(truncateMemoText(memo)));
   }
 
   return builder.build();
@@ -662,7 +705,7 @@ export async function buildAccountMergeTransaction({
   const sourceAccount = await server.loadAccount(fromPublicKey);
 
   const builder = new TransactionBuilder(sourceAccount, {
-    fee: "100",
+    fee: STELLAR_BASE_FEE_STROOPS_STRING,
     networkPassphrase: NETWORK_PASSPHRASE,
   })
     .addOperation(
@@ -670,7 +713,7 @@ export async function buildAccountMergeTransaction({
         destination: destinationPublicKey,
       })
     )
-    .setTimeout(60);
+    .setTimeout(STELLAR_TRANSACTION_TIMEOUT_SECONDS);
 
   return builder.build();
 }
@@ -1036,12 +1079,11 @@ export async function buildSorobanTipTransaction({
   // Derive the XLM Asset Contract ID
   const xlmContractId = Asset.native().contractId(NETWORK_PASSPHRASE);
 
-  // Convert XLM amount to stroops (1 XLM = 10,000,000 stroops)
-  const stroops = BigInt(Math.round(parseFloat(amount) * 10_000_000));
+  const stroops = BigInt(Math.round(parseFloat(amount) * STELLAR_STROOPS_PER_XLM));
 
   // Prepare the `send_tip` invocation
   const tx = new TransactionBuilder(sourceAccount, {
-    fee: "100",
+    fee: STELLAR_BASE_FEE_STROOPS_STRING,
     networkPassphrase: NETWORK_PASSPHRASE,
   })
     .addOperation(
@@ -1053,7 +1095,7 @@ export async function buildSorobanTipTransaction({
         nativeToScVal(stroops, { type: "i128" })
       )
     )
-    .setTimeout(60)
+    .setTimeout(STELLAR_TRANSACTION_TIMEOUT_SECONDS)
     .build();
 
   // Preflight: Simulate the transaction to get resources and fees
@@ -1084,7 +1126,7 @@ export async function getContractTipTotal(recipient: string): Promise<string> {
     // but simulation is more robust for contract getters.
     const tx = new TransactionBuilder(
       new Account(recipient, "0"),
-      { fee: "100", networkPassphrase: NETWORK_PASSPHRASE }
+      { fee: STELLAR_BASE_FEE_STROOPS_STRING, networkPassphrase: NETWORK_PASSPHRASE }
     )
       .addOperation(
         contract.call("get_tip_total", nativeToScVal(recipient, { type: "address" }))
@@ -1302,13 +1344,16 @@ export async function fetchNetworkFeeStats(): Promise<NetworkFeeStats> {
     fee_charged: { mode: string };
   };
 
-  const modeStroops = parseInt(data.fee_charged?.mode ?? "100", 10);
-  const baseFeeXlm = modeStroops / 10_000_000;
+  const modeStroops = parseInt(
+    data.fee_charged?.mode ?? STELLAR_BASE_FEE_STROOPS_STRING,
+    10
+  );
+  const baseFeeXlm = modeStroops / STELLAR_STROOPS_PER_XLM;
 
   let feeLevel: FeeLevel;
-  if (modeStroops < 100) {
+  if (modeStroops < STELLAR_BASE_FEE_STROOPS) {
     feeLevel = "normal";
-  } else if (modeStroops <= 1000) {
+  } else if (modeStroops <= ELEVATED_FEE_MAX_STROOPS) {
     feeLevel = "elevated";
   } else {
     feeLevel = "high";
@@ -1442,7 +1487,7 @@ export async function buildCancelOfferTransaction({
 }): Promise<Transaction> {
   const sourceAccount = await server.loadAccount(fromPublicKey);
   return new TransactionBuilder(sourceAccount, {
-    fee: "100",
+    fee: STELLAR_BASE_FEE_STROOPS_STRING,
     networkPassphrase: NETWORK_PASSPHRASE,
   })
     .addOperation(
@@ -1454,7 +1499,7 @@ export async function buildCancelOfferTransaction({
         offerId: offerId,
       })
     )
-    .setTimeout(60)
+    .setTimeout(STELLAR_TRANSACTION_TIMEOUT_SECONDS)
     .build();
 }
 
@@ -1476,7 +1521,7 @@ export async function buildSellOfferTransaction({
 }): Promise<Transaction> {
   const sourceAccount = await server.loadAccount(fromPublicKey);
   return new TransactionBuilder(sourceAccount, {
-    fee: "100",
+    fee: STELLAR_BASE_FEE_STROOPS_STRING,
     networkPassphrase: NETWORK_PASSPHRASE,
   })
     .addOperation(
@@ -1487,7 +1532,7 @@ export async function buildSellOfferTransaction({
         price,
       })
     )
-    .setTimeout(60)
+    .setTimeout(STELLAR_TRANSACTION_TIMEOUT_SECONDS)
     .build();
 }
 
@@ -1509,7 +1554,7 @@ export async function buildBuyOfferTransaction({
 }): Promise<Transaction> {
   const sourceAccount = await server.loadAccount(fromPublicKey);
   return new TransactionBuilder(sourceAccount, {
-    fee: "100",
+    fee: STELLAR_BASE_FEE_STROOPS_STRING,
     networkPassphrase: NETWORK_PASSPHRASE,
   })
     .addOperation(
@@ -1520,7 +1565,7 @@ export async function buildBuyOfferTransaction({
         price,
       })
     )
-    .setTimeout(60)
+    .setTimeout(STELLAR_TRANSACTION_TIMEOUT_SECONDS)
     .build();
 }
 
@@ -1546,7 +1591,7 @@ export async function buildPathPaymentTransaction({
 }): Promise<Transaction> {
   const sourceAccount = await server.loadAccount(fromPublicKey);
   return new TransactionBuilder(sourceAccount, {
-    fee: "100",
+    fee: STELLAR_BASE_FEE_STROOPS_STRING,
     networkPassphrase: NETWORK_PASSPHRASE,
   })
     .addOperation(
@@ -1559,7 +1604,7 @@ export async function buildPathPaymentTransaction({
         path,
       })
     )
-    .setTimeout(60)
+    .setTimeout(STELLAR_TRANSACTION_TIMEOUT_SECONDS)
     .build();
 }
 

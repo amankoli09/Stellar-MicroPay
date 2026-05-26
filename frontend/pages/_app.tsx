@@ -150,6 +150,25 @@ export default function App({ Component, pageProps }: AppProps) {
     registerProtocolHandler();
   }, []);
 
+  // Register the PWA service worker for installability and offline caching.
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+
+    const registerWorker = () => {
+      navigator.serviceWorker.register("/sw.js").catch((error) => {
+        console.warn("[PWA] Service worker registration failed:", error);
+      });
+    };
+
+    if (document.readyState === "complete") {
+      registerWorker();
+      return;
+    }
+
+    window.addEventListener("load", registerWorker, { once: true });
+    return () => window.removeEventListener("load", registerWorker);
+  }, []);
+
   // Issue #19 — toggleTheme: switches theme, updates <html> class and localStorage
   const toggleTheme = () => {
     const next = theme === "dark" ? "light" : "dark";

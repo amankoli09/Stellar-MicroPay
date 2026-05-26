@@ -2,7 +2,10 @@ import { useMemo, useState } from "react";
 import {
   buildPaymentTransaction,
   isValidStellarAddress,
+  STELLAR_MEMO_TEXT_MAX_BYTES,
+  STELLAR_MINIMUM_ACCOUNT_BALANCE_XLM,
   submitTransaction,
+  truncateMemoText,
 } from "@/lib/stellar";
 import { signTransactionWithWallet } from "@/lib/wallet";
 
@@ -48,7 +51,10 @@ export default function BatchPaymentForm({
   const [batchMessage, setBatchMessage] = useState<string | null>(null);
 
   const xlmBalanceValue = parseFloat(xlmBalance || "0");
-  const availableXLM = Math.max(0, xlmBalanceValue - 1);
+  const availableXLM = Math.max(
+    0,
+    xlmBalanceValue - STELLAR_MINIMUM_ACCOUNT_BALANCE_XLM
+  );
 
   const totalXLM = useMemo(
     () =>
@@ -258,13 +264,13 @@ export default function BatchPaymentForm({
                   value={recipient.memo}
                   onChange={(event) =>
                     updateRecipient(recipient.id, {
-                      memo: event.target.value,
+                      memo: truncateMemoText(event.target.value),
                     })
                   }
                   disabled={isProcessing}
                   className="input-field w-full"
                   placeholder="Payment note"
-                  maxLength={28}
+                  maxLength={STELLAR_MEMO_TEXT_MAX_BYTES}
                 />
               </label>
 
