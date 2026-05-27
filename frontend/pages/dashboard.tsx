@@ -58,15 +58,13 @@ import {
   getRecentPaymentsForSparkline,
   PaymentRecord,
 } from "@/lib/stellar";
-import { formatUSD, copyToClipboard } from "@/utils/format";
+import { formatAsset, formatUSD, copyToClipboard } from "@/utils/format";
 import { useToast } from "@/lib/useToast";
 import { URIParseResult, uriToPrefillData } from "@/lib/sep0007";
 import { getJwtToken } from "@/lib/auth"; // Assuming auth helper exists or similar logic
-
+import { useWallet } from "@/lib/useWallet";
 
 interface DashboardProps {
-  publicKey: string | null;
-  onConnect: (pk: string) => void;
   stellarURI?: URIParseResult | null;
 }
 
@@ -127,7 +125,8 @@ function formatSnapshotTime(savedAt: number) {
   });
 }
 
-export default function Dashboard({ publicKey, onConnect, stellarURI }: DashboardProps) {
+export default function Dashboard({ stellarURI }: DashboardProps) {
+  const { publicKey } = useWallet();
   const AUTO_REFRESH_SECONDS = 30;
   const [xlmBalance, setXlmBalance]   = useState<string | null>(null);
   const [reserveInfo, setReserveInfo] = useState<AccountReserveInfo | null>(null);
@@ -680,7 +679,8 @@ export default function Dashboard({ publicKey, onConnect, stellarURI }: Dashboar
       publicKey,
       async (payment) => {
         if (payment.type === 'received') {
-          showToast(`Received ${payment.amount} ${payment.asset}`);
+          const formattedAmount = formatAsset(payment.amount, payment.asset);
+          showToast(`Received ${formattedAmount}`);
 
           if (notificationEnabled && Notification.permission === 'granted') {
             if (document.visibilityState === 'hidden') {
@@ -689,7 +689,7 @@ export default function Dashboard({ publicKey, onConnect, stellarURI }: Dashboar
               try {
                 const registration = await navigator.serviceWorker.ready;
                 await registration.showNotification('Stellar Pay — Payment received', {
-                  body: `You received ${payment.amount} ${payment.asset}`,
+                  body: `You received ${formattedAmount}`,
                   icon: '/favicon.svg',
                   badge: '/favicon.svg',
                 });
@@ -698,7 +698,7 @@ export default function Dashboard({ publicKey, onConnect, stellarURI }: Dashboar
               }
             } else {
               // Page is visible — in-app bubble is less intrusive.
-              setBubbleMessage(`You received ${payment.amount} ${payment.asset}`);
+              setBubbleMessage(`You received ${formattedAmount}`);
               setShowBubble(true);
               setTimeout(() => setShowBubble(false), 3000);
             }
@@ -732,7 +732,7 @@ export default function Dashboard({ publicKey, onConnect, stellarURI }: Dashboar
           <h1 className="font-display text-3xl font-bold text-white mb-3">Dashboard</h1>
           <p className="text-slate-400">Connect your wallet to get started</p>
         </div>
-        <WalletConnect onConnect={onConnect} />
+        <WalletConnect />
       </div>
     );
   }
@@ -1004,8 +1004,7 @@ export default function Dashboard({ publicKey, onConnect, stellarURI }: Dashboar
             <div>
               <p className="label mb-1">USDC Balance</p>
               <div className="font-display text-3xl font-bold text-white">
-                {parseFloat(usdcBalance).toLocaleString("en-US", { maximumFractionDigits: 4 })}
-                <span className="text-blue-400 text-xl ml-2">USDC</span>
+                {formatAsset(usdcBalance, "USDC")}
               </div>
             </div>
           </div>

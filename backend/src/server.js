@@ -104,7 +104,8 @@ app.get("/api/docs.json", (req, res) => {
 
 // ─── Error Handling ────────────────────────────────────────────────────────────
 
-app.use((err, req, res, _next) => {
+app.use((err, req, res, next) => {
+  void next;
   const status = err.status || 500;
   const message = err.message || "Internal Server Error";
 

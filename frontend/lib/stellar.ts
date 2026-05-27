@@ -299,7 +299,7 @@ export interface PaymentHistoryResponse {
   /** Whether more records are available on the next page. */
   hasMore: boolean;
   /** Cursor string to pass into the next {@link getPaymentHistory} call. */
-  nextCursor?: string | (() => any);
+  nextCursor?: string;
 }
 
 // DEX Types
@@ -1685,5 +1685,4 @@ export async function fetchNetworkStats(): Promise<NetworkStats> {
     p99Fee: parseInt(feeStats.fee_charged.p99),
   };
 }
-
 
