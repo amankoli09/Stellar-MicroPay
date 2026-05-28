@@ -360,10 +360,15 @@ export default function TransactionList({
             <span>Keyboard navigation: ↑ ↓ to navigate, Enter to copy address</span>
           </div>
           
-          <div className="space-y-2">
+          <div
+            role="list"
+            aria-label="Payment history"
+            className="space-y-2"
+          >
         {visiblePayments.map((tx, index) => (
           <div
             key={tx.id}
+            role="listitem"
             tabIndex={focusedIndex === index ? 0 : -1}
             onKeyDown={(e) => {
               if (e.key === 'ArrowDown') {

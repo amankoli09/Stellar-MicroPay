@@ -686,12 +686,19 @@ export default function SendPaymentForm({
                     }}
                     className="text-stellar-400 hover:text-stellar-300"
                     title={favourites.some((f) => f.address === destination) ? "Remove favourite" : "Add favourite"}
+                    aria-label={favourites.some((f) => f.address === destination) ? "Remove address from favourites" : "Add address to favourites"}
                   >
                     <StarIcon className="h-5 w-5" filled={favourites.some((f) => f.address === destination)} />
                   </button>
                 )}
                 {isScannerSupported && status === "idle" && (
-                  <button type="button" onClick={openScanner} className="text-slate-400 hover:text-white" title="Scan QR Code">
+                  <button
+                    type="button"
+                    onClick={openScanner}
+                    className="text-slate-400 hover:text-white"
+                    title="Scan QR Code"
+                    aria-label="Scan QR code to fill destination address"
+                  >
                     <QrCodeIcon className="h-5 w-5" />
                   </button>
                 )}
