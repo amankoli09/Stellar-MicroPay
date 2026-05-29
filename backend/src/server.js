@@ -11,6 +11,7 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
 require("dotenv").config();
+const Sentry = require("@sentry/node");
 
 const accountRoutes = require("./routes/accounts");
 const authRoutes = require("./routes/auth");
@@ -27,6 +28,16 @@ const logger = require("./utils/logger");
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+
+// ─── Sentry ───────────────────────────────────────────────────────────────────
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  environment: process.env.NODE_ENV || "development",
+  // Only enable in production unless SENTRY_DSN is explicitly set
+  enabled: !!process.env.SENTRY_DSN,
+  tracesSampleRate: 0.2,
+});
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
@@ -63,12 +74,10 @@ app.use(
   })
 );
 
-// ─── Routes ───────────────────────────────────────────────────────────────────
+// ─── Health route (exempt from rate limiting) ─────────────────────────────────
 
-app.use("/api/auth",     authRoutes);
-app.use("/api/accounts", accountRoutes);
-app.use("/api/payments", paymentRoutes);
 app.use("/health",       healthRoutes);
+app.use("/api/health",   healthRoutes);
 
 // Global rate limiting — 100 requests per 15 minutes per IP.
 // standardHeaders: true  → emits RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset (RFC 6585 draft-7).
@@ -85,10 +94,10 @@ app.use(limiter);
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
 
+app.use("/api/auth",     authRoutes);
 app.use("/api/accounts", accountRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/analytics", analyticsRoutes);
-app.use("/api/health", healthRoutes);
 app.use("/api/turrets", turretsRoutes);
 app.use("/api/tips", tipsRoutes);
 app.use("/federation", federationRoutes);
@@ -115,6 +124,9 @@ app.use((req, res, next) => {
 });
 
 // ─── Error Handling ────────────────────────────────────────────────────────────
+
+// Sentry must capture errors before the generic handler responds
+Sentry.setupExpressErrorHandler(app);
 
 app.use((err, req, res, next) => {
   void next;
