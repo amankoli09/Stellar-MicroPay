@@ -65,7 +65,7 @@ function InstallBanner() {
           </div>
           <button
             onClick={() => setShowBanner(false)}
-            className="cursor-pointer p-1 text-slate-500 transition-colors hover:text-slate-300"
+            className="cursor-pointer p-1 text-slate-400 transition-colors hover:text-slate-300"
             aria-label="Dismiss"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

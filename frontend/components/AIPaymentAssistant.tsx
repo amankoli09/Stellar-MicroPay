@@ -136,7 +136,7 @@ export default function AIPaymentAssistant({
               className="w-full h-24 px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-stellar-500/50 focus:border-stellar-500 resize-none"
               disabled={isLoading}
             />
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-slate-400 mt-1">
               Press Cmd/Ctrl + Enter to parse, or Escape to close
             </p>
           </div>

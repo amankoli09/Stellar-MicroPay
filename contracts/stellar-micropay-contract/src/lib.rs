@@ -49,6 +49,11 @@ impl MicroPayContract {
         }
         env.storage().persistent().set(&DataKey::Admin, &admin);
         env.storage().persistent().extend_ttl(&DataKey::Admin, PERSISTENT_LIFETIME_THRESHOLD, PERSISTENT_BUMP_AMOUNT);
+
+        // Emit an init event so off-chain indexers can detect an initialised
+        // contract without polling get_admin() (#258).
+        env.events()
+            .publish((Symbol::new(&env, "init"),), admin);
     }
 
     pub fn transfer_admin(env: Env, current_admin: Address, new_admin: Address) {
@@ -205,7 +210,7 @@ impl MicroPayContract {
                 panic!("amount must be positive");
             }
             token.transfer(&from, &to, &amount);
-            
+
             let current_total: i128 = env.storage().persistent().get(&DataKey::TipTotal(to.clone())).unwrap_or(0);
             let current_count: u32 = env.storage().persistent().get(&DataKey::TipCount(to.clone())).unwrap_or(0);
 
@@ -224,5 +229,129 @@ impl MicroPayContract {
             env.storage().persistent().set(&DataKey::TipRecord(to.clone(), current_count), &record);
             env.storage().persistent().extend_ttl(&DataKey::TipRecord(to.clone(), current_count), PERSISTENT_LIFETIME_THRESHOLD, PERSISTENT_BUMP_AMOUNT);
         }
+    }
+}
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use soroban_sdk::{
+        testutils::{Address as _},
+        Address, Env,
+    };
+
+    #[test]
+    fn test_initialize() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, MicroPayContract);
+        let client = MicroPayContractClient::new(&env, &contract_id);
+
+        let admin = Address::generate(&env);
+        client.initialize(&admin);
+
+        assert_eq!(client.get_admin(), admin);
+    }
+
+    #[test]
+    fn test_initialize_emits_init_event() {
+        use soroban_sdk::{testutils::Events, vec, IntoVal};
+
+        let env = Env::default();
+        let contract_id = env.register_contract(None, MicroPayContract);
+        let client = MicroPayContractClient::new(&env, &contract_id);
+
+        let admin = Address::generate(&env);
+        client.initialize(&admin);
+
+        // initialize() should publish exactly one event: (init,) -> admin.
+        assert_eq!(
+            env.events().all(),
+            vec![
+                &env,
+                (
+                    contract_id.clone(),
+                    (Symbol::new(&env, "init"),).into_val(&env),
+                    admin.into_val(&env),
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "Contract already initialized")]
+    fn test_double_initialize_fails() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, MicroPayContract);
+        let client = MicroPayContractClient::new(&env, &contract_id);
+
+        let admin = Address::generate(&env);
+        client.initialize(&admin);
+        client.initialize(&admin); // should panic
+    }
+
+    #[test]
+    fn test_mint_receipt() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, MicroPayContract);
+        let client = MicroPayContractClient::new(&env, &contract_id);
+
+        let admin = Address::generate(&env);
+        client.initialize(&admin);
+
+        let payer = Address::generate(&env);
+        let payee = Address::generate(&env);
+
+        env.mock_all_auths();
+
+        let memo = Symbol::new(&env, "Rent");
+        let receipt_id = client.mint_receipt(&payer, &payee, &1000, &memo);
+        assert_eq!(receipt_id, 0);
+
+        assert_eq!(client.get_receipt_count(&payer), 1);
+
+        let stored = client.get_receipt(&payer, &0);
+        assert_eq!(stored.from, payer);
+        assert_eq!(stored.to, payee);
+        assert_eq!(stored.amount, 1000);
+        assert_eq!(stored.memo, memo);
+    }
+
+    #[test]
+    fn test_receipt_count_tracks_multiple_mints() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, MicroPayContract);
+        let client = MicroPayContractClient::new(&env, &contract_id);
+
+        let admin = Address::generate(&env);
+        client.initialize(&admin);
+
+        let payer = Address::generate(&env);
+        let payee1 = Address::generate(&env);
+        let payee2 = Address::generate(&env);
+
+        env.mock_all_auths();
+
+        let id1 = client.mint_receipt(&payer, &payee1, &500, &Symbol::new(&env, "Coffee"));
+        let id2 = client.mint_receipt(&payer, &payee2, &1500, &Symbol::new(&env, "Invoice"));
+
+        assert_eq!(id1, 0);
+        assert_eq!(id2, 1);
+        assert_eq!(client.get_receipt_count(&payer), 2);
+    }
+
+    #[test]
+    fn test_tip_totals_start_at_zero() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, MicroPayContract);
+        let client = MicroPayContractClient::new(&env, &contract_id);
+
+        let admin = Address::generate(&env);
+        client.initialize(&admin);
+
+        let recipient = Address::generate(&env);
+        assert_eq!(client.get_tip_total(&recipient), 0);
+        assert_eq!(client.get_tip_count(&recipient), 0);
     }
 }

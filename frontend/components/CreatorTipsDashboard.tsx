@@ -127,7 +127,7 @@ export default function CreatorTipsDashboard({
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="card bg-gradient-to-br from-stellar-500/10 to-transparent border-stellar-500/20">
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-1">
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-400 mb-1">
             Total Tips Received
           </p>
           <p className="font-display text-2xl font-bold text-white">
@@ -136,7 +136,7 @@ export default function CreatorTipsDashboard({
         </div>
 
         <div className="card bg-gradient-to-br from-emerald-500/10 to-transparent border-emerald-500/20">
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-1">
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-400 mb-1">
             Total XLM Received
           </p>
           <p className="font-display text-2xl font-bold text-white">
@@ -151,7 +151,7 @@ export default function CreatorTipsDashboard({
         </div>
 
         <div className="card bg-gradient-to-br from-violet-500/10 to-transparent border-violet-500/20">
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-1">
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-400 mb-1">
             Average Tip
           </p>
           <p className="font-display text-2xl font-bold text-white">
@@ -218,10 +218,10 @@ export default function CreatorTipsDashboard({
         ) : tips.length === 0 ? (
           <div className="text-center py-8">
             <div className="mx-auto w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mb-3">
-              <GiftIcon className="w-6 h-6 text-slate-500" />
+              <GiftIcon className="w-6 h-6 text-slate-400" />
             </div>
             <p className="text-slate-400 text-sm">No tips received yet</p>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-slate-400 mt-1">
               Share your tip page to start receiving tips!
             </p>
           </div>
@@ -241,13 +241,13 @@ export default function CreatorTipsDashboard({
                       <p className="text-sm text-white font-medium">
                         {tip.amount} {tip.asset}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-slate-400">
                         From: {shortenAddress(tip.senderPublicKey)}
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-400">
                       {formatTimestamp(tip.timestamp)}
                     </p>
                     {tip.memo && (
@@ -270,7 +270,7 @@ export default function CreatorTipsDashboard({
                 >
                   ← Previous
                 </button>
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-slate-400">
                   Page {page + 1} of {Math.ceil(stats.totalTips / pageSize)}
                 </span>
                 <button

@@ -279,7 +279,7 @@ export default function Contacts() {
                   if (e.key === "Enter") handleFederationLookup();
                 }}
               />
-              <p className="mt-1 text-xs text-slate-500">{`Resolve Stellar Federation addresses to public keys`}</p>
+              <p className="mt-1 text-xs text-slate-400">{`Resolve Stellar Federation addresses to public keys`}</p>
             </div>
 
             {federationResult && (

@@ -320,7 +320,7 @@ export default function TransactionList({
       <div ref={containerRef} className="card">
         <div className="text-center py-12">
           <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-white/5 flex items-center justify-center">
-            <HistoryIcon className="w-6 h-6 text-slate-500" />
+            <HistoryIcon className="w-6 h-6 text-slate-400" />
           </div>
           <p className="text-slate-400 text-sm">No transactions yet</p>
           <p className="text-slate-600 text-xs mt-1">
@@ -354,7 +354,7 @@ export default function TransactionList({
               </h2>
               <button
                 onClick={() => fetchPayments()}
-                className="text-xs text-slate-500 hover:text-stellar-400 transition-colors flex items-center gap-1"
+                className="text-xs text-slate-400 hover:text-stellar-400 transition-colors flex items-center gap-1"
               >
                 <RefreshIcon className="w-3.5 h-3.5" />
                 Refresh
@@ -444,7 +444,7 @@ export default function TransactionList({
                 </button>
               </div>
               <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-slate-400">
                   {timeAgo(tx.createdAt)}
                 </span>
                 {tx.memo && (
@@ -485,7 +485,7 @@ export default function TransactionList({
                 href={explorerUrl(tx.transactionHash) ?? undefined}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-500 hover:text-stellar-400"
+                className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-stellar-400"
                 title="View on Stellar Expert"
                 aria-label="View transaction on Stellar Expert"
               >
