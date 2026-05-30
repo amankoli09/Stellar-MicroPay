@@ -31,7 +31,7 @@ export default function ExternalPaymentBanner({
             {message || 'Send a payment using the pre-filled form below.'}
           </p>
           {originDomain && (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-400">
               Origin: <span className="font-mono">{originDomain}</span>
             </p>
           )}

@@ -43,6 +43,10 @@ function cacheSet(key, value) {
   accountCache.set(key, { value, expiresAt: Date.now() + ACCOUNT_CACHE_TTL_MS });
 }
 
+function clearAccountCache() {
+  accountCache.clear();
+}
+
 // ─── Account ──────────────────────────────────────────────────────────────────
 
 /**
@@ -184,4 +188,10 @@ function validatePublicKey(publicKey) {
   }
 }
 
-module.exports = { getAccount, getXLMBalance, getPayments, validatePublicKey };
+module.exports = {
+  getAccount,
+  getXLMBalance,
+  getPayments,
+  validatePublicKey,
+  clearAccountCache,
+};

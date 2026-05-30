@@ -17,7 +17,6 @@ import {
   TurretsDeployment,
 } from "@/lib/turrets";
 import { shortenAddress } from "@/lib/stellar";
-import { useWallet } from "@/lib/useWallet";
 
 interface SettingsPageProps {
   publicKey: string | null;
@@ -25,6 +24,7 @@ interface SettingsPageProps {
   onDisconnect: () => void;
 }
 
+// SNS section added
 export default function SettingsPage({
   publicKey,
   onConnect,
@@ -242,7 +242,7 @@ export default function SettingsPage({
     // Disconnect wallet to force reconnect on new network
     if (publicKey) {
       disconnectWallet();
-      disconnectCurrentWallet();
+      onDisconnect();
     }
 
     setShowMainnetWarning(false);
@@ -259,7 +259,7 @@ export default function SettingsPage({
       // Disconnect wallet on URL change
       if (publicKey) {
         disconnectWallet();
-        disconnectCurrentWallet();
+        onDisconnect();
       }
     }
   };
@@ -391,7 +391,7 @@ export default function SettingsPage({
                       placeholder="https://horizon.example.com"
                       className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-cosmos-900 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-stellar-500 focus:border-transparent"
                     />
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    <p className="text-xs text-slate-400 dark:text-slate-400 mt-1">
                       Enter a custom Horizon server URL. Changes take effect immediately.
                     </p>
                   </div>
@@ -414,7 +414,7 @@ export default function SettingsPage({
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
                     Turrets / Server-side Signing
                   </h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  <p className="text-sm text-slate-400 dark:text-slate-400 mt-1">
                     Deploy programmatic txFunctions with Freighter-signed authorization and server-side evaluation.
                   </p>
                 </div>
@@ -446,28 +446,28 @@ export default function SettingsPage({
                 <div className="space-y-4">
                   <div className="rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
                     <p className="text-sm font-medium text-slate-900 dark:text-white mb-3">DCA into XLM</p>
-                    <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Quote Amount (USD)</label>
+                    <label className="block text-xs text-slate-400 dark:text-slate-400 mb-1">Quote Amount (USD)</label>
                     <input
                       type="number"
                       value={dcaForm.amountQuote}
                       onChange={(e) => setDcaForm((prev) => ({ ...prev, amountQuote: e.target.value }))}
                       className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-cosmos-900 text-slate-900 dark:text-white"
                     />
-                    <label className="block text-xs text-slate-500 dark:text-slate-400 mt-3 mb-1">Interval (minutes)</label>
+                    <label className="block text-xs text-slate-400 dark:text-slate-400 mt-3 mb-1">Interval (minutes)</label>
                     <input
                       type="number"
                       value={dcaForm.intervalMinutes}
                       onChange={(e) => setDcaForm((prev) => ({ ...prev, intervalMinutes: e.target.value }))}
                       className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-cosmos-900 text-slate-900 dark:text-white"
                     />
-                    <label className="block text-xs text-slate-500 dark:text-slate-400 mt-3 mb-1">Quote Asset Code</label>
+                    <label className="block text-xs text-slate-400 dark:text-slate-400 mt-3 mb-1">Quote Asset Code</label>
                     <input
                       type="text"
                       value={dcaForm.quoteAssetCode}
                       onChange={(e) => setDcaForm((prev) => ({ ...prev, quoteAssetCode: e.target.value }))}
                       className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-cosmos-900 text-slate-900 dark:text-white"
                     />
-                    <label className="block text-xs text-slate-500 dark:text-slate-400 mt-3 mb-1">Quote Asset Issuer</label>
+                    <label className="block text-xs text-slate-400 dark:text-slate-400 mt-3 mb-1">Quote Asset Issuer</label>
                     <input
                       type="text"
                       value={dcaForm.quoteAssetIssuer}
@@ -486,35 +486,35 @@ export default function SettingsPage({
 
                   <div className="rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
                     <p className="text-sm font-medium text-slate-900 dark:text-white mb-3">Stop-loss Monitor</p>
-                    <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Threshold Price (USD)</label>
+                    <label className="block text-xs text-slate-400 dark:text-slate-400 mb-1">Threshold Price (USD)</label>
                     <input
                       type="number"
                       value={stopLossForm.thresholdPrice}
                       onChange={(e) => setStopLossForm((prev) => ({ ...prev, thresholdPrice: e.target.value }))}
                       className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-cosmos-900 text-slate-900 dark:text-white"
                     />
-                    <label className="block text-xs text-slate-500 dark:text-slate-400 mt-3 mb-1">Amount to Sell</label>
+                    <label className="block text-xs text-slate-400 dark:text-slate-400 mt-3 mb-1">Amount to Sell</label>
                     <input
                       type="number"
                       value={stopLossForm.amountSell}
                       onChange={(e) => setStopLossForm((prev) => ({ ...prev, amountSell: e.target.value }))}
                       className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-cosmos-900 text-slate-900 dark:text-white"
                     />
-                    <label className="block text-xs text-slate-500 dark:text-slate-400 mt-3 mb-1">Sell Asset Code</label>
+                    <label className="block text-xs text-slate-400 dark:text-slate-400 mt-3 mb-1">Sell Asset Code</label>
                     <input
                       type="text"
                       value={stopLossForm.sellAssetCode}
                       onChange={(e) => setStopLossForm((prev) => ({ ...prev, sellAssetCode: e.target.value }))}
                       className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-cosmos-900 text-slate-900 dark:text-white"
                     />
-                    <label className="block text-xs text-slate-500 dark:text-slate-400 mt-3 mb-1">Sell Asset Issuer</label>
+                    <label className="block text-xs text-slate-400 dark:text-slate-400 mt-3 mb-1">Sell Asset Issuer</label>
                     <input
                       type="text"
                       value={stopLossForm.sellAssetIssuer}
                       onChange={(e) => setStopLossForm((prev) => ({ ...prev, sellAssetIssuer: e.target.value }))}
                       className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-cosmos-900 text-slate-900 dark:text-white"
                     />
-                    <label className="block text-xs text-slate-500 dark:text-slate-400 mt-3 mb-1">Cooldown (minutes)</label>
+                    <label className="block text-xs text-slate-400 dark:text-slate-400 mt-3 mb-1">Cooldown (minutes)</label>
                     <input
                       type="number"
                       value={stopLossForm.cooldownMinutes}
@@ -536,12 +536,12 @@ export default function SettingsPage({
                   <div className="rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-sm font-medium text-slate-900 dark:text-white">Deployments</p>
-                      <span className="text-xs text-slate-500 dark:text-slate-400">{deployments.length} active</span>
+                      <span className="text-xs text-slate-400 dark:text-slate-400">{deployments.length} active</span>
                     </div>
                     {turretsLoading ? (
-                      <p className="text-sm text-slate-500 dark:text-slate-400">Loading deployments...</p>
+                      <p className="text-sm text-slate-400 dark:text-slate-400">Loading deployments...</p>
                     ) : deployments.length === 0 ? (
-                      <p className="text-sm text-slate-500 dark:text-slate-400">No Turrets functions deployed yet.</p>
+                      <p className="text-sm text-slate-400 dark:text-slate-400">No Turrets functions deployed yet.</p>
                     ) : (
                       <div className="space-y-3">
                         {deployments.map((deployment) => (
@@ -549,7 +549,7 @@ export default function SettingsPage({
                             <div className="flex items-start justify-between gap-2">
                               <div>
                                 <p className="text-sm font-semibold text-slate-900 dark:text-white">{deployment.type === "dca" ? "DCA" : "Stop-loss"}</p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">{deployment.id}</p>
+                                <p className="text-xs text-slate-400 dark:text-slate-400">{deployment.id}</p>
                               </div>
                               <button
                                 type="button"
@@ -559,7 +559,7 @@ export default function SettingsPage({
                                 {deployment.status === "active" ? "Pause" : "Resume"}
                               </button>
                             </div>
-                            <div className="mt-3 grid gap-2 text-xs text-slate-500 dark:text-slate-400">
+                            <div className="mt-3 grid gap-2 text-xs text-slate-400 dark:text-slate-400">
                               <div>Next run: {deployment.nextRunAt || "n/a"}</div>
                               <div>Last checked: {deployment.lastCheckedAt || "n/a"}</div>
                               <div>Last executed: {deployment.lastExecutedAt || "n/a"}</div>
@@ -628,7 +628,7 @@ export default function SettingsPage({
                           {usernameLoading ? "Registering..." : "Register"}
                         </button>
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      <p className="text-xs text-slate-400 dark:text-slate-400 mt-1">
                         3-20 characters, letters and numbers only
                       </p>
                     </div>
@@ -707,7 +707,28 @@ export default function SettingsPage({
               </button>
             </div>
           </div>
-        </div>
+        
+          {/* ── Stellar Name Service ── */}
+          <div className="card">
+            <h2 className="text-lg font-semibold mb-2">Your Stellar Name</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              Register a human-readable name (e.g. <strong>alice.xlm</strong>) that others can use to send you payments instead of your full address.
+            </p>
+            {publicKey && (
+              <p className="text-xs text-gray-400 mb-4 break-all">
+                Your address: <span className="font-mono">{publicKey}</span>
+              </p>
+            )}
+            <a
+              href="https://stellarnames.org"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-primary"
+            >
+              Register your name on StellarNames →
+            </a>
+          </div>
+</div>
       )}
     </>
   );

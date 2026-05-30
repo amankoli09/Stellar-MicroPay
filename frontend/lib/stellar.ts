@@ -869,7 +869,13 @@ export async function getPaymentHistory(
   // Batch-fetch transaction memos: collect unique hashes for payment ops,
   // then resolve them all in parallel instead of one-by-one (N+1 fix).
   const paymentOps = operations.records.filter((op) => op.type === "payment");
-  const uniqueHashes = [...new Set(paymentOps.map((op) => (op as Horizon.HorizonApi.PaymentOperationResponse).transaction_hash))];
+  const uniqueHashes = Array.from(
+    new Set(
+      paymentOps.map(
+        (op) => (op as Horizon.HorizonApi.PaymentOperationResponse).transaction_hash
+      )
+    )
+  );
 
   const memoMap = new Map<string, string | undefined>();
   await Promise.all(
@@ -1058,6 +1064,26 @@ export function shortenAddress(address: string, chars = 6): string {
 */
 export function isValidStellarAddress(address: string): boolean {
   return /^G[A-Z0-9]{55}$/.test(address);
+}
+
+/**
+ * Validate whether a string is a well-formed Stellar Federation address.
+ *
+ * Federation addresses use the SEP-0002 `name*domain` format, for example
+ * `alice*stellarmicropay.io`.
+ */
+export function isValidFederationAddress(address: string): boolean {
+  const value = address.trim();
+  const parts = value.split("*");
+  if (parts.length !== 2) return false;
+
+  const [name, domain] = parts;
+  if (!/^[A-Za-z0-9._-]{1,32}$/.test(name)) return false;
+  if (domain.length > 253) return false;
+
+  return /^([A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$/.test(
+    domain
+  );
 }
 
 /**
@@ -1386,19 +1412,58 @@ export function streamPayments(
 export async function resolveFederationAddress(
   federationAddress: string
 ): Promise<string> {
-  // Basic validation: federation addresses should contain exactly one @
-  if (!federationAddress.includes("*")) {
+  const normalizedAddress = federationAddress.trim().toLowerCase();
+  if (!isValidFederationAddress(normalizedAddress)) {
     throw new Error(
       'Invalid federation address format. Expected "user*domain.com"'
     );
   }
 
-  try {
-    const record = await Federation.Server.resolve(federationAddress);
+  const resolveViaSdk = async () => {
+    const record = await Federation.Server.resolve(normalizedAddress);
     return record.account_id;
+  };
+
+  if (typeof fetch !== "function") {
+    return resolveViaSdk();
+  }
+
+  const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "";
+  const federationUrl = `${apiBase}/federation?q=${encodeURIComponent(
+    normalizedAddress
+  )}&type=name`;
+
+  try {
+    const response = await fetch(federationUrl);
+    const payload = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(
+        payload?.error || `Federation lookup failed with status ${response.status}`
+      );
+    }
+
+    if (!isValidStellarAddress(payload?.account_id || "")) {
+      throw new Error("Federation lookup did not return a valid account ID");
+    }
+
+    return payload.account_id;
   } catch (error) {
+    if (error instanceof TypeError) {
+      try {
+        return await resolveViaSdk();
+      } catch (sdkError) {
+        throw new Error(
+          `Federation lookup failed for "${normalizedAddress}": ${
+            sdkError instanceof Error ? sdkError.message : "Unknown error"
+          }`
+        );
+      }
+    }
+
     throw new Error(
-      `Federation lookup failed for "${federationAddress}": ${error instanceof Error ? error.message : "Unknown error"
+      `Federation lookup failed for "${normalizedAddress}": ${
+        error instanceof Error ? error.message : "Unknown error"
       }`
     );
   }
@@ -1483,6 +1548,31 @@ export interface Orderbook {
 /**
  * Represents a single trade aggregation (OHLC) point.
  */
+export interface TradeAggregation {
+  timestamp: number;
+  trade_count: number;
+  base_volume: string;
+  counter_volume: string;
+  avg: string;
+  high: string;
+  low: string;
+  open: string;
+  close: string;
+  price: string;
+}
+
+/**
+ * Represents an open DEX offer for an account.
+ */
+export interface OpenOffer {
+  id: string | number;
+  seller: string;
+  selling: Asset;
+  buying: Asset;
+  amount: string;
+  price: string;
+}
+
 /**
  * Fetch the current orderbook for an asset pair.
  */
@@ -1713,3 +1803,51 @@ export async function fetchNetworkStats(): Promise<NetworkStats> {
   };
 }
 
+
+// ── Stellar Name Service ──────────────────────────────────────────────────
+
+const snsCache = new Map<string, { address: string; expiresAt: number }>()
+const SNS_CACHE_TTL_MS = 10 * 60 * 1000 // 10 minutes
+
+/**
+ * Resolves a Stellar name (e.g. alice.xlm) to a Stellar address.
+ * Uses Stellar Federation protocol under the hood.
+ * Caches results for 10 minutes.
+ */
+export async function resolveStellarName(name: string): Promise<string> {
+  const trimmed = name.trim()
+  
+  // Return as-is if already a valid Stellar address
+  if (isValidStellarAddress(trimmed)) return trimmed
+  
+  // Check cache
+  const cached = snsCache.get(trimmed)
+  if (cached && cached.expiresAt > Date.now()) return cached.address
+
+  // Must contain a * for federation (e.g. alice*stellar.org) or end in .xlm
+  let federationAddress = trimmed
+  if (trimmed.endsWith('.xlm')) {
+    // Convert alice.xlm -> alice*stellarnames.org
+    const parts = trimmed.split('.')
+    federationAddress = `${parts[0]}*stellarnames.org`
+  } else if (!trimmed.includes('*')) {
+    throw new Error(`Invalid Stellar name: ${trimmed}`)
+  }
+
+  try {
+    const record = await Federation.Server.resolve(federationAddress)
+    if (!record.account_id) throw new Error('Name resolved but no address found')
+    snsCache.set(trimmed, { address: record.account_id, expiresAt: Date.now() + SNS_CACHE_TTL_MS })
+    return record.account_id
+  } catch (err: any) {
+    throw new Error(`Could not resolve "${trimmed}": ${err.message ?? 'Unknown error'}`)
+  }
+}
+
+/**
+ * Returns true if the input looks like a Stellar name (not a raw address)
+ */
+export function isStellarName(value: string): boolean {
+  const v = value.trim()
+  return v.endsWith('.xlm') || v.includes('*')
+}

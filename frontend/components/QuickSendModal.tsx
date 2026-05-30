@@ -71,7 +71,7 @@ export default function QuickSendModal({
         </button>
 
         {/* Keyboard hint */}
-        <p className="mb-2 text-xs text-slate-500 text-right select-none">
+        <p className="mb-2 text-xs text-slate-400 text-right select-none">
           Press <kbd className="px-1.5 py-0.5 rounded border border-slate-700 bg-slate-800 text-slate-400 font-mono text-xs">Esc</kbd> to close
         </p>
 

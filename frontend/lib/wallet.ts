@@ -11,13 +11,13 @@
 
 import {
   isConnected,
-  getPublicKey,
+  getAddress,
   signTransaction,
   requestAccess,
   isAllowed,
 } from "@stellar/freighter-api";
 
-import { getNetworkPassphrase, getNetworkConfig } from "./stellar";
+import { getNetworkPassphrase } from "./stellar";
 
 // ─── SEP-0010 helpers ────────────────────────────────────────────────────────
 
@@ -90,7 +90,8 @@ export const EXTENSION_URLS: Record<SupportedBrowser, string> = {
  */
 export async function isFreighterInstalled(): Promise<boolean> {
   try {
-    return await isConnected();
+    const result = await isConnected();
+    return Boolean(result.isConnected);
   } catch {
     return false;
   }
@@ -101,7 +102,8 @@ export async function isFreighterInstalled(): Promise<boolean> {
  */
 export async function hasSiteAccess(): Promise<boolean> {
   try {
-    return await isAllowed();
+    const result = await isAllowed();
+    return Boolean(result.isAllowed);
   } catch {
     return false;
   }
@@ -129,10 +131,10 @@ export async function connectWallet(): Promise<{
 
   try {
     // 2. Request access from the user
-    await requestAccess();
+    const access = await requestAccess();
 
     // 3. Get the public key
-    const publicKey = await getPublicKey();
+    const publicKey = access.address || (await getAddress()).address;
 
     if (!publicKey) {
       return { publicKey: null, error: "No public key returned from Freighter." };
@@ -162,8 +164,8 @@ export async function getConnectedPublicKey(): Promise<string | null> {
     const allowed = await hasSiteAccess();
     if (!allowed) return null;
 
-    const pk = await getPublicKey();
-    return pk || null;
+    const { address } = await getAddress();
+    return address || null;
   } catch {
     return null;
   }
@@ -205,15 +207,15 @@ export async function signTransactionWithWallet(
   transactionXDR: string
 ): Promise<{ signedXDR: string | null; error: string | null }> {
   try {
-    const config = getNetworkConfig();
-    const network = config.network === "mainnet" ? "MAINNET" : "TESTNET";
-
-    const signedXDR = await signTransaction(transactionXDR, {
+    const signed = await signTransaction(transactionXDR, {
       networkPassphrase: getNetworkPassphrase(),
-      network,
     });
 
-    return { signedXDR, error: null };
+    if (signed.error) {
+      throw new Error(signed.error.message || "Freighter signing failed");
+    }
+
+    return { signedXDR: signed.signedTxXdr, error: null };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
 
@@ -257,5 +259,3 @@ export async function signTransactionWithLedger(xdr: string): Promise<{ signedXD
 export async function getLedgerPublicKey(): Promise<{ publicKey: string | null; error: string | null }> {
   return { publicKey: null, error: "Ledger support not implemented." };
 }
-
-

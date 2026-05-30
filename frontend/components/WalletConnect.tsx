@@ -235,7 +235,7 @@ export default function WalletConnect({ onConnectSuccess }: WalletConnectProps) 
       </div>
 
       {/* Help Text */}
-      <div className="space-y-3 text-xs text-slate-500">
+      <div className="space-y-3 text-xs text-slate-400">
         <div>
           Don&apos;t have Freighter?{" "}
           <a
@@ -260,7 +260,7 @@ export default function WalletConnect({ onConnectSuccess }: WalletConnectProps) 
       </div>
 
       {/* Network indicator */}
-      <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-center gap-2 text-xs text-slate-500">
+      <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-center gap-2 text-xs text-slate-400">
         <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
         Connected to{" "}
         <span className="font-mono text-slate-400">

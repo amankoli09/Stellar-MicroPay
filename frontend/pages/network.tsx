@@ -109,7 +109,7 @@ export default function Network() {
           <div className={`text-2xl font-bold text-white transition-all duration-300 ${ledgerAnimation ? 'text-emerald-400 scale-110' : ''}`}>
             #{stats!.latestLedgerSequence.toLocaleString()}
           </div>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-slate-400 mt-1">
             Sequence number
           </p>
         </div>
@@ -120,7 +120,7 @@ export default function Network() {
           <div className="text-lg font-bold text-white">
             {formatTime(stats!.lastLedgerCloseTime)}
           </div>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-slate-400 mt-1">
             When the ledger closed
           </p>
         </div>
@@ -131,7 +131,7 @@ export default function Network() {
           <div className="text-2xl font-bold text-white">
             {stats!.avgTransactionCount.toLocaleString()}
           </div>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-slate-400 mt-1">
             Per ledger (last 10)
           </p>
         </div>
@@ -142,7 +142,7 @@ export default function Network() {
           <div className="text-2xl font-bold text-white">
             {formatFee(stats!.currentBaseFee)} XLM
           </div>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-slate-400 mt-1">
             Minimum transaction fee
           </p>
         </div>
@@ -153,7 +153,7 @@ export default function Network() {
           <div className="text-2xl font-bold text-white">
             {formatFee(stats!.p50Fee)} XLM
           </div>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-slate-400 mt-1">
             50th percentile fee
           </p>
         </div>
@@ -164,7 +164,7 @@ export default function Network() {
           <div className="text-2xl font-bold text-white">
             {formatFee(stats!.p95Fee)} XLM
           </div>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-slate-400 mt-1">
             95th percentile fee
           </p>
         </div>
@@ -175,7 +175,7 @@ export default function Network() {
           <div className="text-2xl font-bold text-white">
             {formatFee(stats!.p99Fee)} XLM
           </div>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-slate-400 mt-1">
             99th percentile fee
           </p>
         </div>

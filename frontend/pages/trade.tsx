@@ -87,12 +87,15 @@ export default function Trade() {
 
       // Sign with Freighter
       const { signTransaction } = await import("@stellar/freighter-api");
-      const signedXDR = await signTransaction(transaction.toXDR(), {
+      const signed = await signTransaction(transaction.toXDR(), {
         networkPassphrase: NETWORK_PASSPHRASE,
       });
+      if (signed.error) {
+        throw new Error(signed.error.message || "Transaction signing failed");
+      }
 
       // Submit transaction
-      await submitTransaction(signedXDR);
+      await submitTransaction(signed.signedTxXdr);
       
       showToast("Offer cancelled successfully!", "success");
       loadOpenOffers(); // Reload offers
@@ -250,7 +253,7 @@ export default function Trade() {
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-8 text-slate-500">
+                <div className="text-center py-8 text-slate-400">
                   Loading orderbook...
                 </div>
               )}
@@ -308,7 +311,7 @@ export default function Trade() {
               </table>
             </div>
           ) : (
-            <div className="text-center py-8 text-slate-500">
+            <div className="text-center py-8 text-slate-400">
               No open orders
             </div>
           )}
@@ -348,7 +351,7 @@ export default function Trade() {
               </table>
             </div>
           ) : (
-            <div className="text-center py-8 text-slate-500">
+            <div className="text-center py-8 text-slate-400">
               No trades in the last 24 hours
             </div>
           )}

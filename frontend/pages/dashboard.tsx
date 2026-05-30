@@ -12,7 +12,7 @@
  *  4. The service worker's push event handler calls showNotification().
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -128,6 +128,15 @@ function formatSnapshotTime(savedAt: number) {
 export default function Dashboard({ stellarURI }: DashboardProps) {
   const { publicKey } = useWallet();
   const AUTO_REFRESH_SECONDS = 30;
+  // Move focus to the dashboard heading once a wallet is connected, so keyboard
+  // and screen-reader focus follows the content instead of staying on the
+  // now-hidden Connect control (#252).
+  const dashboardHeadingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (publicKey) {
+      dashboardHeadingRef.current?.focus();
+    }
+  }, [publicKey]);
   const [xlmBalance, setXlmBalance]   = useState<string | null>(null);
   const [reserveInfo, setReserveInfo] = useState<AccountReserveInfo | null>(null);
   const [usdcBalance, setUsdcBalance] = useState<string | null>(null);
@@ -753,13 +762,21 @@ export default function Dashboard({ stellarURI }: DashboardProps) {
         <link rel="canonical" href="https://stellar-micropay.vercel.app/dashboard" />
       </Head>
       <div className="mb-8">
-        <h1 className="font-display text-3xl font-bold text-white mb-1">Dashboard</h1>
+        {/* Focus target after wallet connect / navigation so focus lands on the
+            dashboard content instead of a now-hidden control (#252). */}
+        <h1
+          ref={dashboardHeadingRef}
+          tabIndex={-1}
+          className="font-display text-3xl font-bold text-white mb-1 outline-none"
+        >
+          Dashboard
+        </h1>
         <p className="text-slate-400 text-sm">Send and receive XLM globally</p>
         <div className="mt-4">
           <button
             onClick={handleToggleNotifications}
             disabled={notificationPermission === 'denied'}
-            className="w-full bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-sm text-stellar-400 hover:text-stellar-300 disabled:bg-white/5 disabled:text-slate-500 disabled:border-white/5 disabled:cursor-not-allowed transition-colors flex items-center justify-between cursor-pointer"
+            className="w-full bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-sm text-stellar-400 hover:text-stellar-300 disabled:bg-white/5 disabled:text-slate-400 disabled:border-white/5 disabled:cursor-not-allowed transition-colors flex items-center justify-between cursor-pointer"
           >
             <span>
               {notificationEnabled
@@ -801,7 +818,7 @@ export default function Dashboard({ stellarURI }: DashboardProps) {
       {selectedMonth && (
         <div className="mb-8 p-4 rounded-xl bg-stellar-500/5 border border-stellar-500/10 flex items-center justify-between animate-fade-in">
           <div>
-            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-1">
+            <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">
               Selected Period: {selectedMonth.label}
             </p>
             <div className="flex items-center gap-6">
@@ -817,7 +834,7 @@ export default function Dashboard({ stellarURI }: DashboardProps) {
           </div>
           <button 
             onClick={() => setSelectedMonth(null)}
-            className="p-2 text-slate-500 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+            className="p-2 text-slate-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"
           >
             <CloseIcon className="w-5 h-5" />
           </button>
@@ -856,7 +873,7 @@ export default function Dashboard({ stellarURI }: DashboardProps) {
               <span className="text-slate-600 text-xs">·</span>
               <button
                 onClick={() => setAddressExpanded((x) => !x)}
-                className="text-xs text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+                className="text-xs text-slate-400 hover:text-slate-300 transition-colors cursor-pointer"
               >
                 {addressExpanded ? "Collapse" : "Show full"}
               </button>
@@ -892,13 +909,13 @@ export default function Dashboard({ stellarURI }: DashboardProps) {
                 )}
                 <button
                   onClick={() => void refreshBalance()}
-                  className="mt-1 text-xs text-slate-500 hover:text-stellar-400 transition-colors flex items-center gap-1 sm:justify-end cursor-pointer"
+                  className="mt-1 text-xs text-slate-400 hover:text-stellar-400 transition-colors flex items-center gap-1 sm:justify-end cursor-pointer"
                   disabled={balanceLoading}
                 >
                   <RefreshIcon className={`w-3 h-3 ${isRefreshingBalance ? "animate-spin" : ""}`} />
                   {isRefreshingBalance ? "Refreshing..." : "Refresh"}
                 </button>
-                <p className="mt-1 text-[11px] text-slate-500 sm:text-right">
+                <p className="mt-1 text-[11px] text-slate-400 sm:text-right">
                   Refreshing in {refreshCountdown}s
                 </p>
               </div>
@@ -911,7 +928,7 @@ export default function Dashboard({ stellarURI }: DashboardProps) {
               </div>
             ) : (
               <div>
-                <p className="text-slate-500 text-sm">Failed to load</p>
+                <p className="text-slate-400 text-sm">Failed to load</p>
                 <button
                   onClick={fetchBalance}
                   className="text-xs text-stellar-400 hover:underline cursor-pointer"
